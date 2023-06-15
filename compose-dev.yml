@@ -1,0 +1,17 @@
+version: "3.9"
+
+x-project-api-base: &project-api-base
+    image: project-api:dev
+    build:
+      target: dev
+    environment:
+      PROJECT_API_LOGGING_LEVEL: ${PROJECT_API_LOGGING_LEVEL:-DEBUG}
+      PROJECT_API_API_RELOAD: ${PROJECT_API_API_RELOAD:-True}
+
+services:
+  api:
+    <<: *project-api-base
+    volumes:
+      - type: bind
+        source: ./
+        target: /project_api/

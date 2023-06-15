@@ -1,0 +1,35 @@
+version: "3.9"
+
+x-project-api-base: &project-api-base
+  image: project-api:prod
+  platform: linux/amd64
+  build:
+    dockerfile: Dockerfile
+    target: prod
+  networks:
+    - project-api
+
+services:
+  api:
+    <<: *project-api-base
+    ports:
+      - target: 8000
+        published: 8000
+        protocol: tcp
+    healthcheck:
+      test:
+        - "CMD"
+        - "python3"
+        - "-c"
+        - "import requests; assert requests.get('http://localhost:8000/openapi.json').status_code==200;"
+      start_period: 1s
+      interval: 2s
+      timeout: 1s
+      retries: 5
+    command:
+      [ "python3", "src/project_api/main.py" ]
+
+networks:
+  project-api:
+    driver: bridge
+    name: project-api
