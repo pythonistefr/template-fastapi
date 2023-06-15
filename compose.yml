@@ -6,10 +6,58 @@ x-project-api-base: &project-api-base
   build:
     dockerfile: Dockerfile
     target: prod
+  depends_on:
+    db:
+      condition: service_healthy
+  environment:
+    PROJECT_API_SECRET_PGSQL_DSN: postgresql+psycopg2://${PROJECT_API_DB_USER:-project-api}:${PROJECT_API_DB_PASSWORD:-project-api}@db:5432/${PROJECT_API_DB_USER:-project-api}
+    PROJECT_API_LOGGING_LEVEL: ${PROJECT_API_LOGGING_LEVEL:-INFO}
+    PROJECT_API_API_RELOAD: ${PROJECT_API_API_RELOAD:-False}
   networks:
     - project-api
 
 services:
+  db:
+    image: docker.io/postgres:15-bullseye
+    ports:
+      - target: 5432
+        published: 5432
+        protocol: tcp
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - >-
+          pg_isready
+          --username=$${POSTGRES_USER}
+          --host=localhost
+      start_period: 2s
+      interval: 2s
+      timeout: 1s
+      retries: 5
+    networks:
+      - project-api
+    volumes:
+      - type: volume
+        source: db-data
+        target: /var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: ${PROJECT_API_DB_USER:-project-api}
+      POSTGRES_PASSWORD: ${PROJECT_API_DB_PASSWORD:-project-api}
+    command:
+      - "postgres"
+      - "-c"
+      - "log_statement=${POSTGRES_LOG_STATEMENT:-all}"
+
+  db-migrations:
+    <<: *project-api-base
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: alembic
+    command:
+      - upgrade
+      - head
+
   api:
     <<: *project-api-base
     ports:
@@ -33,3 +81,7 @@ networks:
   project-api:
     driver: bridge
     name: project-api
+
+volumes:
+  db-data:
+    driver: local
