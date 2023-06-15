@@ -6,10 +6,26 @@ import pydantic
 from project_api.enums.logging import LogLevel
 
 ENVIRONMENT_VARIABLES_PREFIX = "PROJECT_API_"
+SECRET_ENVIRONMENT_VARIABLES_PREFIX = f"{ENVIRONMENT_VARIABLES_PREFIX}SECRET_"
 
 
 def get_home_dir() -> Path:
     return Path(os.path.join(os.path.dirname(os.path.abspath(__file__)))).parent.parent.parent
+
+
+class SecretSettings(pydantic.BaseSettings):
+    """Pydantic settings class used specifically for secrets."""
+
+    PGSQL_DSN: pydantic.PostgresDsn = pydantic.Field(
+        default=pydantic.parse_obj_as(
+            pydantic.PostgresDsn,
+            "postgresql+psycopg2://project-api:project-api@localhost:5432/project-api",
+        ),
+        description="PostgreSQL database Data Source Name",
+    )
+
+    class Config:
+        env_prefix = SECRET_ENVIRONMENT_VARIABLES_PREFIX
 
 
 class Settings(pydantic.BaseSettings):
@@ -50,6 +66,11 @@ class Settings(pydantic.BaseSettings):
     # Filesystem context
     ####################
     HOME_PATH: Path = get_home_dir()
+
+    ####################
+    # secrets
+    ####################
+    secrets = SecretSettings()
 
     class Config:
         env_prefix = ENVIRONMENT_VARIABLES_PREFIX

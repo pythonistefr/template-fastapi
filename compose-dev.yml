@@ -9,9 +9,41 @@ x-project-api-base: &project-api-base
       PROJECT_API_API_RELOAD: ${PROJECT_API_API_RELOAD:-True}
 
 services:
+  db-migrations:
+    <<: *project-api-base
+
   api:
     <<: *project-api-base
     volumes:
       - type: bind
         source: ./
         target: /project_api/
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    ports:
+      - "5050:80"
+    healthcheck:
+      test: ["CMD", "wget", "-O", "-", "http://localhost:80/misc/ping"]
+      interval: 15s
+      timeout: 3s
+      retries: 25
+    restart: unless-stopped
+    networks:
+      - project-api
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-contact@pythoniste.fr}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-PythOn1s!e}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_SHOW_GRAVATAR_IMAGE: "False"
+      PGADMIN_CONFIG_UPGRADE_CHECK_ENABLED: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgadmin:
+    driver: local
